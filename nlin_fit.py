@@ -28,13 +28,12 @@ def _parse_bounds(bounds, prms, params):
         if not k in prms:
             raise SyntaxError('%s not a func arg' % k)
         for b in bounds[k]:
-            if b != 'min' or b != 'max':
-                raise SyntaxError('Only max or min allowed as bound keywords')
             if b == 'min':
-                params[k].min = bound[k]['min']
+                params[k].min = bounds[k]['min']
+            elif b == 'max':
+                params[k].max = bounds[k]['max']
             else:
-                params[k].max = bound[k]['max']
-
+                raise SyntaxError('Only max or min allowed as bounds keywords')
                 
 def fit(func, x, y, bounds=None, **kwargs):
     '''
@@ -48,7 +47,7 @@ def fit(func, x, y, bounds=None, **kwargs):
     mod = lmfit.Model(func) #, independent_vars = ['x'])
     params = mod.make_params()
     for k in kwargs:
-        params.add(k, kwargs[k])
+        params.add(k, value=kwargs[k])
     if bounds:
         _parse_bounds(bounds, kwargs, params)
     ret = mod.fit(y, params, x=x)
@@ -148,44 +147,61 @@ def plt_fit_ci(x, y, fit_res, ci_l, ci_h, pi_l, pi_h, out_d=os.getcwd(), fname=N
             out_f = os.path.join(out_d, fn)
         plt.savefig(out_f, dpi=600)
         plt.cla()
-    
+        
 if __name__ == '__main__':
-
-    def test():
-        dat = pd.read_csv('test.csv', sep=';')
-        x = normalize(dat['x'])
-        y = normalize(dat['y'])
-        
-        fit_res = fit(sigmoid_2p, x, y, c1=2.0, c2=1.0)
-
-        ci_params = bs_fit_params(sigmoid_2p, x, y, c1=2.0, c2=1.0, bs_nb=1000)
-        ci_l, ci_h = bs_fit_ci(sigmoid_2p, x, ci_params)
-        pi_l, pi_h = bs_fit_pi(sigmoid_2p, x, y, fit_res, 10**4)
-        plt_fit_ci(x, y, fit_res, ci_l, ci_h, pi_l, pi_h, fname='2p-sigmoid')
-
-    test()
     
-    # import unittest
+    import unittest
 
-    # class test_normalize(unittest.TestCase):
+    class test_normalize(unittest.TestCase):
         
-    #     def test_normalize(self):
-    #         x = scipy.stats.norm.rvs(10, 3, 100)
-    #         r = normalize(x)
-    #         self.assertTrue(np.min(r) == 0.0)
-    #         self.assertTrue(np.max(r) == 1.0)
-    #         self.assertTrue(len(r) == len(x))
+        def test_normalize(self):
+            x = scipy.stats.norm.rvs(10, 3, 100)
+            r = normalize(x)
+            self.assertTrue(np.min(r) == 0.0)
+            self.assertTrue(np.max(r) == 1.0)
+            self.assertTrue(len(r) == len(x))
 
-    #     def _sigmoid_2p(x, c1, c2):
-    #         ret = 1 / (1 + np.exp(c1 * (x - c2)))
-    #         return ret
+        def _sigmoid_2p(self, x, c1, c2):
+            ret = 1 / (1 + np.exp(c1 * (x - c2)))
+            return ret
 
-    #     def test_fit(self):
-    #         x = scipy.stats.norm.rvs(0, 1, 100)
-    #         ytest = scipy.stats.norm.rvs(0, 1, 101)
-    #         self.assertRaises(SyntaxError, fit, self._sigmoid_2p, \
-    #                           x, ytest, c1=1.0, c2=2.0)
-    #    unittest.main()
+        def _model_init(self, fun, **kwargs):
+            mod = lmfit.Model(fun)
+            params = mod.make_params()
+            for k in kwargs:
+                params.add(k, value=params[k])
+            print('-->', params)
+            return mod, params
+
+        def test__parse_bounds(self):
+            fun_args = {'c1': 1.0, 'c2':2.0}
+            m1, p1 = self._model_init(self._sigmoid_2p, c1=1.0, c2=2.0)
+            bounds = {'c3': {'min': 3.0}}
+            self.assertRaises(SyntaxError, _parse_bounds,
+                              bounds, fun_args, p1)
+            m2, p2 = self._model_init(self._sigmoid_2p, c1=1.0, c2=2.0)
+            bounds = {'c1': {'moux': 3.0}}
+            self.assertRaises(SyntaxError, _parse_bounds,
+                              bounds, fun_args, p2)
+            m3, p3 = self._model_init(self._sigmoid_2p, c1=1.0, c2=2.0)
+            bounds = {'c1': {'max': 3.0}}
+            _parse_bounds(bounds, fun_args, p3)
+            v = p3.valuesdict()
+            print(v)
+            self.assertTrue(v['c1'].min == 3.0)
+            m4, p4 = self._model_init(self._sigmoid_2p, c1=1.0, c2=2.0)
+            bounds = {'c1': {'min': 3.0}}
+            _parse_bounds(bounds, fun_args, p4)
+            v = p4.valuesdict()
+            print(v)
+            self.assertTrue(v['c1'].max == 3.0)
+            
+        def test_fit(self):
+            x = scipy.stats.norm.rvs(0, 1, 100)
+            ytest = scipy.stats.norm.rvs(0, 1, 101)
+    #        self.assertRaises(SyntaxError, fit, self._sigmoid_2p, \
+     #                         x, ytest, c1=1.0, c2=2.0)
+    unittest.main()
 
 
 
