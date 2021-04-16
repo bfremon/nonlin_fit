@@ -224,9 +224,11 @@ def fit_fun(func, x, y, fname=None, out_d=os.getcwd(),
     plt_fit_ci(x, y, fit_res, ci_l, ci_h, pi_l, pi_h, fname=fname)
     plt_residuals(x, y, fit_res, fname=fname)
     if thres != None:
-        plt_thres_quantile(x, preds, thres, fname=fname)
+        cdf = thres_output_cdf(x, preds, thres)
+        plt_thres_output_cdf(cdf, fname=fname)
 
-def plt_thres_quantile(x, preds, thres, out_d=os.getcwd(), fname=None):
+        
+def thres_output_cdf(x, preds, thres):
     '''
     For each x prediction in preds (x and preds rows aligned, 
     determine the probability of having a value higher than thres
@@ -241,8 +243,11 @@ def plt_thres_quantile(x, preds, thres, out_d=os.getcwd(), fname=None):
         idx = min_idx_val(ecdf.x, thres)
         ret['x'].append(x[i])
         ret['y'].append(ecdf.y[idx])
-    yval = 1.0 - np.array(ret['y'])
-    xval = np.array(ret['x'])
+    return ret
+
+def plt_thres_output_cdf(out_thres_cdf, out_d=os.getcwd(), fname=None):
+    yval = 1.0 - np.array(out_thres_cdf['y'])
+    xval = np.array(out_thres_cdf['x'])
     sns.lineplot(x=xval, y=yval)
     out_f = _prep_out_f(out_d, fname, '-probablity_over_thres')    
     plt.savefig(out_f, dpi=300)
