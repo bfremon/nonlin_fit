@@ -8,6 +8,7 @@ import lmfit
 import matplotlib.pyplot as plt
 import seaborn as sns
 import time
+from statsmodels.distributions.empirical_distribution import ECDF
 
 def normalize(v):
     ''' Normalize v on [0, 1]'''
@@ -94,7 +95,7 @@ def bs_fit_ci(func, x, params, alpha=0.05):
     return low, high
 
 
-def mc_fit_pi(func, x, y, fit_res, draws_nb=10**4, alpha=0.05):
+def mc_fit_pi(func, x, y, fit_res, draws_nb=10**4, alpha=0.05, ret_preds=False):
     ypred = func(x, **fit_res.params)
     noise = np.std(y - ypred)
     preds = np.array([np.random.normal(ypred, noise) for j in range(draws_nb)])
@@ -102,7 +103,12 @@ def mc_fit_pi(func, x, y, fit_res, draws_nb=10**4, alpha=0.05):
     u = 1 - l
     low = np.quantile(preds, l, axis=0)
     high = np.quantile(preds, u, axis=0)
-    return low, high
+    if not ret_preds:
+        return low, high
+    else:
+        preds_t = np.transpose(preds)
+        preds_df = pd.DataFrame(preds_t)
+        return preds_df, low, high
                      
                      
 def plt_bs_fit(fits, out=os.getcwd()):
@@ -170,7 +176,7 @@ def plt_residuals(x, y, fit_res, out_d=os.getcwd(), fname=None):
 
     
 def fit_fun(func, x, y, fname=None, out_d=os.getcwd(),
-            bs_nb=100, mc_draws=10**4,
+            bs_nb=100, mc_draws=10**4, thres_norm=0.5,
             bounds=None, **kwargs):
     print('processing %s' % fname)
     fit_res = fit(func, x, y, bounds=bounds, **kwargs)
@@ -179,11 +185,40 @@ def fit_fun(func, x, y, fname=None, out_d=os.getcwd(),
                               bounds=bounds, bs_nb=bs_nb, **kwargs)
     print('CI bootstrap done')
     ci_l, ci_h = bs_fit_ci(func, x, ci_params)
-    pi_l, pi_h = mc_fit_pi(func, x, y, fit_res, mc_draws)
+    preds, pi_l, pi_h = mc_fit_pi(func, x, y, fit_res,
+                                  mc_draws, ret_preds=True)
     print('PI MC done')
     plt_fit_ci(x, y, fit_res, ci_l, ci_h, pi_l, pi_h, fname=fname)
     plt_residuals(x, y, fit_res, fname=fname)
+    plt_thres_quantile(x, preds, thres_norm, fname=fname)
 
+def plt_thres_quantile(x, preds, thres_norm, out_d=os.getcwd(), fname=None):
+    preds.to_csv('preds.csv')
+    ret = {'x': [], 'y': []}
+    i = 0
+    for i in range(len(preds)):
+        ecdf = ECDF(preds.iloc[i])
+        idx = min_idx_val(ecdf.x, thres_norm)
+        ret['x'].append(x[i])
+        ret['y'].append(ecdf.y[idx])
+    yval = 1.0 - np.array(ret['y'])
+    xval = np.array(ret['x'])
+    sns.lineplot(x=xval, y=yval)
+    out_f = _prep_out_f(out_d, fname, 'probablity_over_thres')    
+    plt.savefig(out_f, dpi=300)
+    plt.cla()
+
+def min_idx_val(x, thres):
+    diff = x - float(thres)
+    diff[diff < 0.0] = np.Inf
+    ret = diff.argmin()
+    return ret
+    
+def norm_thres(unnorm_x, thres):
+    v = np.append(unnorm_x, thres)
+    normalized_v = normalize(v)
+    ret = normalized_v[len(normalized_v) - 1]
+    return ret
     
 if __name__ == '__main__':
     def sigmoid_2p(x, c1, c2):
@@ -195,14 +230,24 @@ if __name__ == '__main__':
         x = normalize(dat['x'])
         y = normalize(dat['y'])
         params = {'c1': 1.0, 'c2': 2.0}
-        fit_fun(sigmoid_2p, x, y, 'sigmoid', bounds=None, **params)
+        fit_fun(sigmoid_2p, x, y, 'sigmoid',
+            thres_norm=norm_thres(dat['y'], 3), bounds=None, **params)
 
     test()
     
     import unittest
 
     class test_normalize(unittest.TestCase):
-        
+        def test_min_idx_val(self):
+            v = np.array([ float(i) for i in range(30)])
+            r = min_idx_val(v, 3)
+            self.assertTrue(r == 3)
+            r = min_idx_val(v, 31.0)
+            self.assertTrue(r == 0)
+            v = np.array([float(i) for i in range(-3, 10)])
+            r = min_idx_val(v, 3)
+            print(r)
+                         
         def test_normalize(self):
             x = scipy.stats.norm.rvs(10, 3, 100)
             r = normalize(x)
@@ -219,7 +264,6 @@ if __name__ == '__main__':
             params = mod.make_params()
             for k in kwargs:
                 params.add(k, value=params[k])
-            print('-->', params)
             return mod, params
 
         def test__parse_bounds(self):
@@ -236,13 +280,11 @@ if __name__ == '__main__':
             bounds = {'c1': {'max': 3.0}}
             _parse_bounds(bounds, fun_args, p3)
             v = p3.valuesdict()
-            print(v)
             self.assertTrue(v['c1'].min == 3.0)
             m4, p4 = self._model_init(self._sigmoid_2p, c1=1.0, c2=2.0)
             bounds = {'c1': {'min': 3.0}}
             _parse_bounds(bounds, fun_args, p4)
             v = p4.valuesdict()
-            print(v)
             self.assertTrue(v['c1'].max == 3.0)
             
         def test_fit(self):
