@@ -94,7 +94,7 @@ def bs_fit_ci(func, x, params, alpha=0.05):
     return low, high
 
 
-def bs_fit_pi(func, x, y, fit_res, draws_nb=10**4, alpha=0.05):
+def mc_fit_pi(func, x, y, fit_res, draws_nb=10**4, alpha=0.05):
     ypred = func(x, **fit_res.params)
     noise = np.std(y - ypred)
     preds = np.array([np.random.normal(ypred, noise) for j in range(draws_nb)])
@@ -160,11 +160,11 @@ def plt_fit_ci(x, y, fit_res, ci_l, ci_h, pi_l, pi_h, out_d=os.getcwd(), fname=N
 def plt_residuals(x, y, fit_res, out_d=os.getcwd(), fname=None):
     residuals = y - fit_res.best_fit
     sns.scatterplot(x=x, y=residuals)
-    out_f = _prep_out_f(out_d, fname, '-residuals.png')
+    out_f = _prep_out_f(out_d, fname, '-residuals')
     plt.savefig(out_f, dpi=300)
     plt.cla()
     scipy.stats.probplot(residuals, dist='norm', plot=plt)
-    out_f = _prep_out_f(out_d, fname, '-residuals-probplot.png')
+    out_f = _prep_out_f(out_d, fname, '-residuals-probplot')
     plt.savefig(out_f, dpi=300)
     plt.cla()
 
@@ -179,10 +179,10 @@ def fit_fun(func, x, y, fname=None, out_d=os.getcwd(),
                               bounds=bounds, bs_nb=bs_nb, **kwargs)
     print('CI bootstrap done')
     ci_l, ci_h = bs_fit_ci(func, x, ci_params)
-    pi_l, pi_h = bs_fit_pi(func, x, y, fit_res, mc_draws)
+    pi_l, pi_h = mc_fit_pi(func, x, y, fit_res, mc_draws)
     print('PI MC done')
     plt_fit_ci(x, y, fit_res, ci_l, ci_h, pi_l, pi_h, fname=fname)
-    plt_residuals(x, y, fit_res)
+    plt_residuals(x, y, fit_res, fname=fname)
 
     
 if __name__ == '__main__':
