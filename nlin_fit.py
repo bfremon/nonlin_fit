@@ -176,7 +176,7 @@ def plt_residuals(x, y, fit_res, out_d=os.getcwd(), fname=None):
 
     
 def fit_fun(func, x, y, fname=None, out_d=os.getcwd(),
-            bs_nb=100, mc_draws=10**4, thres_norm=0.5,
+            bs_nb=100, mc_draws=10**4, thres=None,
             bounds=None, **kwargs):
     print('processing %s' % fname)
     fit_res = fit(func, x, y, bounds=bounds, **kwargs)
@@ -190,21 +190,21 @@ def fit_fun(func, x, y, fname=None, out_d=os.getcwd(),
     print('PI MC done')
     plt_fit_ci(x, y, fit_res, ci_l, ci_h, pi_l, pi_h, fname=fname)
     plt_residuals(x, y, fit_res, fname=fname)
-    plt_thres_quantile(x, preds, thres_norm, fname=fname)
+    if thres != None:
+        plt_thres_quantile(x, preds, thres, fname=fname)
 
-def plt_thres_quantile(x, preds, thres_norm, out_d=os.getcwd(), fname=None):
-    preds.to_csv('preds.csv')
+def plt_thres_quantile(x, preds, thres, out_d=os.getcwd(), fname=None):
     ret = {'x': [], 'y': []}
     i = 0
     for i in range(len(preds)):
         ecdf = ECDF(preds.iloc[i])
-        idx = min_idx_val(ecdf.x, thres_norm)
+        idx = min_idx_val(ecdf.x, thres)
         ret['x'].append(x[i])
         ret['y'].append(ecdf.y[idx])
     yval = 1.0 - np.array(ret['y'])
     xval = np.array(ret['x'])
     sns.lineplot(x=xval, y=yval)
-    out_f = _prep_out_f(out_d, fname, 'probablity_over_thres')    
+    out_f = _prep_out_f(out_d, fname, '-probablity_over_thres')    
     plt.savefig(out_f, dpi=300)
     plt.cla()
 
@@ -225,14 +225,27 @@ if __name__ == '__main__':
         ret = 1 / (1 + np.exp(c1 * (x - c2)))
         return ret
 
+    def loglogistic(x, c1, c2, c3, c4):
+        ret = c1 + ((c2 - c1) / (1 + np.exp(x - c3) / c4))
+        return ret
+
+    loglog_bounds = {'c3': {'min': 0.0001,
+                            'max': np.Inf}
+    }
+    loglogparams = {'c1': 1.0,
+                    'c2': 2.0,
+                    'c3': 3.0,
+                    'c4': 4.0}
     def test():
         dat = pd.read_csv('test.csv', sep=';')
         x = normalize(dat['x'])
         y = normalize(dat['y'])
+        thres = norm_thres(dat['y'], 3)
         params = {'c1': 1.0, 'c2': 2.0}
-        fit_fun(sigmoid_2p, x, y, 'sigmoid',
-            thres_norm=norm_thres(dat['y'], 3), bounds=None, **params)
-
+        # fit_fun(sigmoid_2p, x, y, 'sigmoid',
+        #     thres=thres, bounds=None, **params)
+        fit_fun(loglogistic, x, y, 'loglogistic', thres=thres,
+                bounds=loglog_bounds, **loglogparams)
     test()
     
     import unittest
