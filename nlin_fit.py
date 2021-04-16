@@ -20,6 +20,9 @@ def normalize(v):
 
 
 def _parse_bounds(bounds, prms, params):
+    '''
+    Private func for bounds parsing
+    '''
     for k in bounds:
         if not k in prms:
             raise SyntaxError('%s not a func arg' % k)
@@ -68,6 +71,16 @@ def resample(x, y, vals_nb):
 
 
 def bs_fit_params(func, x, y, bounds=None, bs_nb=100, **kwargs):
+    '''
+    Bootstrap bs_nb times func(x) parameters 
+    func: objective function
+    func: objective function
+    x: input
+    y: func(x) output
+    bounds: min / max values for func parameters
+    bs_nb: number of bootstraps
+    return best_fit params values for each fit  
+    '''
     fits_data = {}
     ret = {}
     for i in range(bs_nb):
@@ -84,6 +97,16 @@ def bs_fit_params(func, x, y, bounds=None, bs_nb=100, **kwargs):
 
 
 def bs_fit_ci(func, x, params, alpha=0.05):
+    '''
+    Determine boostrapped confidence intervals for fit parameters
+    for func(x)
+    func: objective function
+    x: input
+    y: f(x) output
+    params: output of bs_fit_params()
+    alpha: confidence level
+    Return lower and upper confidence bounds for fit at the alpha level for f(x)
+    '''
     ci_data = {}
     for k in params:
         ci_data[k] = func(x, **params[k])
@@ -96,6 +119,16 @@ def bs_fit_ci(func, x, params, alpha=0.05):
 
 
 def mc_fit_pi(func, x, y, fit_res, draws_nb=10**4, alpha=0.05, ret_preds=False):
+    '''
+    Determine predictions intervals at the alpha level using residuals std
+    func: objective function
+    x: input
+    y: f(x) output
+    fit_res: fit object holding best_fit params
+    draws_nb: number of Monte Carlo draws
+    alpha: confidence level
+    ret_preds: to return Monte Carlo predictions (option)
+    '''
     ypred = func(x, **fit_res.params)
     noise = np.std(y - ypred)
     preds = np.array([np.random.normal(ypred, noise) for j in range(draws_nb)])
@@ -194,6 +227,13 @@ def fit_fun(func, x, y, fname=None, out_d=os.getcwd(),
         plt_thres_quantile(x, preds, thres, fname=fname)
 
 def plt_thres_quantile(x, preds, thres, out_d=os.getcwd(), fname=None):
+    '''
+    For each x prediction in preds (x and preds rows aligned, 
+    determine the probability of having a value higher than thres
+    x: input
+    preds: Monte Carlo predictions (output of mc_fit_pi())
+    thres: y-normalized threshold
+    '''
     ret = {'x': [], 'y': []}
     i = 0
     for i in range(len(preds)):
@@ -214,8 +254,11 @@ def min_idx_val(x, thres):
     ret = diff.argmin()
     return ret
     
-def norm_thres(unnorm_x, thres):
-    v = np.append(unnorm_x, thres)
+def normalize_val(x, val):
+    '''
+    Normalize val from vector x
+    '''
+    v = np.append(x, val)
     normalized_v = normalize(v)
     ret = normalized_v[len(normalized_v) - 1]
     return ret
@@ -240,7 +283,7 @@ if __name__ == '__main__':
         dat = pd.read_csv('test.csv', sep=';')
         x = normalize(dat['x'])
         y = normalize(dat['y'])
-        thres = norm_thres(dat['y'], 3)
+        thres = normalize_val(dat['y'], 3)
         params = {'c1': 1.0, 'c2': 2.0}
         # fit_fun(sigmoid_2p, x, y, 'sigmoid',
         #     thres=thres, bounds=None, **params)
