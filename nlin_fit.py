@@ -274,7 +274,7 @@ if __name__ == '__main__':
         return ret
 
     def loglogistic(x, c1, c2, c3, c4):
-        ret = c1 + ((c2 - c1) / (1 + np.exp(x - c3) / c4))
+        ret = c1 + (c2 - c1) / (1 + np.exp(c4 * np.log(x / c3)))
         return ret
 
     loglog_bounds = {'c3': {'min': 0.0001,
