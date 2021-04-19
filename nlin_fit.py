@@ -283,6 +283,8 @@ def normalize_val(x, val):
     return ret
     
 if __name__ == '__main__':
+    import sys
+    
     def sigmoid_2p(x, c1, c2):
         ret = 1 / (1 + np.exp(c1 * (x - c2)))
         return ret
@@ -306,9 +308,11 @@ if __name__ == '__main__':
         #     thres=thres, bounds=None, **params)
         fit_fun(loglogistic, dat, 'loglogistic', thres=thres,
                 bounds=loglog_bounds, **loglogparams)
-    test()
-    
-    import unittest
+        
+    if len(sys.argv) == 2 and sys.argv[1] == '-t':
+        test()
+    else:
+        import unittest
 
     class test_normalize(unittest.TestCase):
         def test_min_idx_val(self):
@@ -320,17 +324,18 @@ if __name__ == '__main__':
             v = np.array([float(i) for i in range(-3, 10)])
             r = min_idx_val(v, 3)
             print(r)
-                         
+            
         def test_normalize(self):
             x = scipy.stats.norm.rvs(10, 3, 100)
             r = normalize(x)
             self.assertTrue(np.min(r) == 0.0)
             self.assertTrue(np.max(r) == 1.0)
             self.assertTrue(len(r) == len(x))
-            n = denormalize(r,x)
-            for orig, new in n, x:
-                self.assertAlmostEquals(orig == new, 10^-4)
-
+            n = denormalize(r, x)
+            diff = n - x
+            for i in range(len(diff)):
+                self.assertAlmostEqual(diff[i], 0.0)
+            
         def _sigmoid_2p(self, x, c1, c2):
             ret = 1 / (1 + np.exp(c1 * (x - c2)))
             return ret
@@ -366,8 +371,8 @@ if __name__ == '__main__':
         def test_fit(self):
             x = scipy.stats.norm.rvs(0, 1, 100)
             ytest = scipy.stats.norm.rvs(0, 1, 101)
-    #        self.assertRaises(SyntaxError, fit, self._sigmoid_2p, \
-     #                         x, ytest, c1=1.0, c2=2.0)
+            #        self.assertRaises(SyntaxError, fit, self._sigmoid_2p, \
+                #                         x, ytest, c1=1.0, c2=2.0)
     unittest.main()
 
 
