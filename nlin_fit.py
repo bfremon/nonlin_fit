@@ -18,6 +18,14 @@ def normalize(v):
     ret = (v - min_v) / (max_v - min_v)
     return ret 
 
+def denormalize(norm_v, orig_v):
+    '''
+    Denormalize norm_v to orig_v scale
+    '''
+    min_v = np.min(orig_v)
+    max_v = np.max(orig_v)
+    ret = (norm_v * (max_v - min_v)) + min_v
+    return ret
 
 def _parse_bounds(bounds, prms, params):
     '''
@@ -144,12 +152,12 @@ def mc_fit_pi(func, x, y, fit_res, draws_nb=10**4, alpha=0.05, ret_preds=False):
         return preds_df, low, high
                      
                      
-def plt_bs_fit(fits, out=os.getcwd()):
+def plt_bs_fit(fits, x, y, out=os.getcwd()):
     sns.scatterplot(x=x, y=y, color='orange')
     for f in fits:
         xobs = fits[f]['x']
         yobs = fits[f]['y']
-        ypred = fits[f]['fit'].best_fit
+        ypred = denormalize(fits[f]['fit'].best_fit, y)
         lab = str(fits[f]['fit'].aic) + ' '  + str(fits[f]['fit'].bic)
         sns.scatterplot(x=xobs, y=yobs, color='orange')
         sns.lineplot(x=xobs, y=ypred, label=lab)
@@ -158,18 +166,18 @@ def plt_bs_fit(fits, out=os.getcwd()):
         plt.cla()
 
         
-def plt_fit(x, y, fit_res):
-    '''
-    Plot fit results from fit_res (output of oneDfit()
-    '''
-    residuals = y - fit_res.best_fit
-    uncert = fit_res.eval_uncertainty(fit_res.params, sigma=2)
-    sns.scatterplot(x=x, y=y, label='exp', color='orange')
-    sns.lineplot(x=x, y=fit_res.best_fit, label='fit', color='lightgreen')
-    sns.lineplot(x=x, y=fit_res.best_fit - uncert, label='fit CI',
-                    color='lightblue')
-    sns.lineplot(x=x, y=fit_res.best_fit + uncert, color='lightblue')
-    plt.show()
+# def plt_fit(x, y, fit_res):
+#     '''
+#     Plot fit results from fit_res (output of oneDfit()
+#     '''
+#     residuals = y - fit_res.best_fit
+#     uncert = fit_res.eval_uncertainty(fit_res.params, sigma=2)
+#     sns.scatterplot(x=x, y=y, label='exp', color='orange')
+#     sns.lineplot(x=x, y=fit_res.best_fit, label='fit', color='lightgreen')
+#     sns.lineplot(x=x, y=fit_res.best_fit - uncert, label='fit CI',
+#                     color='lightblue')
+#     sns.lineplot(x=x, y=fit_res.best_fit + uncert, color='lightblue')
+#     plt.show()
 
     
 def _prep_out_f(out_d, fname=None, suffix=None):
@@ -184,21 +192,25 @@ def _prep_out_f(out_d, fname=None, suffix=None):
     ret = os.path.join(out_d, ret)
     return ret
 
-def plt_fit_ci(x, y, fit_res, ci_l, ci_h, pi_l, pi_h, out_d=os.getcwd(), fname=None):
-        sns.scatterplot(x=x, y=y, color='orange')
-        sns.lineplot(x=x, y=fit_res.best_fit, label='fit', color='blue')
-        sns.lineplot(x=x, y=ci_l, label='fit CI', color='lightblue')
-        sns.lineplot(x=x, y=ci_h, color='lightblue')
-        sns.lineplot(x=x, y=pi_l, color='lightgreen', label='fit PI')
-        sns.lineplot(x=x, y=pi_h, color='lightgreen')
-        out_f = _prep_out_f(out_d, fname)
-        plt.savefig(out_f, dpi=600)
-        plt.cla()
-
+def plt_fit_ci(dat, fit_res, ci_l, ci_h, pi_l, pi_h, out_d=os.getcwd(), fname=None):
+    norm_x = normalize(dat['x'])
+    norm_y = normalize(dat['y'])
+    sns.scatterplot(x=dat['x'], y=dat['y'], color='orange')
+    sns.lineplot(x=dat['x'], y=denormalize(fit_res.best_fit, dat['y']),
+                                           label='fit', color='blue')
+    sns.lineplot(x=dat['x'], y=denormalize(ci_l, dat['y']),
+                                           label='fit CI', color='lightblue')
+    sns.lineplot(x=dat['x'], y=denormalize(ci_h, dat['y']), color='lightblue')
+    sns.lineplot(x=dat['x'], y=denormalize(pi_l, dat['y']), color='lightgreen', label='fit PI')
+    sns.lineplot(x=dat['x'], y=denormalize(pi_h, dat['y']), color='lightgreen')
+    out_f = _prep_out_f(out_d, fname)
+    plt.savefig(out_f, dpi=600)
+    plt.cla()
+    
         
-def plt_residuals(x, y, fit_res, out_d=os.getcwd(), fname=None):
-    residuals = y - fit_res.best_fit
-    sns.scatterplot(x=x, y=residuals)
+def plt_residuals(dat, fit_res, out_d=os.getcwd(), fname=None):
+    residuals = dat['y'] - denormalize(fit_res.best_fit, dat['y'])
+    sns.scatterplot(x=dat['x'], y=residuals)
     out_f = _prep_out_f(out_d, fname, '-residuals')
     plt.savefig(out_f, dpi=300)
     plt.cla()
@@ -208,9 +220,11 @@ def plt_residuals(x, y, fit_res, out_d=os.getcwd(), fname=None):
     plt.cla()
 
     
-def fit_fun(func, x, y, fname=None, out_d=os.getcwd(),
+def fit_fun(func, dat, fname=None, out_d=os.getcwd(),
             bs_nb=100, mc_draws=10**4, thres=None,
             bounds=None, **kwargs):
+    x = normalize(dat['x'])
+    y = normalize(dat['y'])
     print('processing %s' % fname)
     fit_res = fit(func, x, y, bounds=bounds, **kwargs)
     print('main fit done')
@@ -219,10 +233,10 @@ def fit_fun(func, x, y, fname=None, out_d=os.getcwd(),
     print('CI bootstrap done')
     ci_l, ci_h = bs_fit_ci(func, x, ci_params)
     preds, pi_l, pi_h = mc_fit_pi(func, x, y, fit_res,
-                                  mc_draws, ret_preds=True)
+                        mc_draws, ret_preds=True)
     print('PI MC done')
-    plt_fit_ci(x, y, fit_res, ci_l, ci_h, pi_l, pi_h, fname=fname)
-    plt_residuals(x, y, fit_res, fname=fname)
+    plt_fit_ci(dat, fit_res, ci_l, ci_h, pi_l, pi_h, fname=fname)
+    plt_residuals(dat, fit_res, fname=fname)
     if thres != None:
         cdf = thres_output_cdf(x, preds, thres)
         plt_thres_output_cdf(cdf, fname=fname)
@@ -286,13 +300,11 @@ if __name__ == '__main__':
                     'c4': 4.0}
     def test():
         dat = pd.read_csv('test.csv', sep=';')
-        x = normalize(dat['x'])
-        y = normalize(dat['y'])
         thres = normalize_val(dat['y'], 3)
         params = {'c1': 1.0, 'c2': 2.0}
         # fit_fun(sigmoid_2p, x, y, 'sigmoid',
         #     thres=thres, bounds=None, **params)
-        fit_fun(loglogistic, x, y, 'loglogistic', thres=thres,
+        fit_fun(loglogistic, dat, 'loglogistic', thres=thres,
                 bounds=loglog_bounds, **loglogparams)
     test()
     
@@ -315,6 +327,9 @@ if __name__ == '__main__':
             self.assertTrue(np.min(r) == 0.0)
             self.assertTrue(np.max(r) == 1.0)
             self.assertTrue(len(r) == len(x))
+            n = denormalize(r,x)
+            for orig, new in n, x:
+                self.assertAlmostEquals(orig == new, 10^-4)
 
         def _sigmoid_2p(self, x, c1, c2):
             ret = 1 / (1 + np.exp(c1 * (x - c2)))
