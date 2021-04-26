@@ -239,7 +239,7 @@ def fit_fun(func, dat, fname=None, out_d=os.getcwd(),
     plt_residuals(dat, fit_res, fname=fname)
     if thres != None:
         cdf = thres_output_cdf(x, preds, thres)
-        plt_thres_output_cdf(cdf, fname=fname)
+        plt_thres_output_cdf(dat['x'], cdf, fname=fname)
 
         
 def thres_output_cdf(x, preds, thres):
@@ -259,9 +259,9 @@ def thres_output_cdf(x, preds, thres):
         ret['y'].append(ecdf.y[idx])
     return ret
 
-def plt_thres_output_cdf(out_thres_cdf, out_d=os.getcwd(), fname=None):
+def plt_thres_output_cdf(x, out_thres_cdf, out_d=os.getcwd(), fname=None):
     yval = 1.0 - np.array(out_thres_cdf['y'])
-    xval = np.array(out_thres_cdf['x'])
+    xval = np.array(denormalize(np.array(out_thres_cdf['x']), x))
     lplt(xval, yval)
     out_f = _prep_out_f(out_d, fname, '-probablity_over_thres')    
     save(out_f)
@@ -375,7 +375,6 @@ if __name__ == '__main__':
                     ytest = scipy.stats.norm.rvs(0, 1, 101)
                     #        self.assertRaises(SyntaxError, fit, self._sigmoid_2p, \
                 #                         x, ytest, c1=1.0, c2=2.0)
-                    
         unittest.main()
 
 
