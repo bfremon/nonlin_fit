@@ -223,7 +223,7 @@ def plt_residuals(dat, fit_res, out_d=os.getcwd(), fname=None):
 
     
 def fit_fun(func, dat, fname=None, out_d=os.getcwd(),
-            bs_nb=100, mc_draws=10**4, thres=None,
+            bs_nb=100, mc_draws=10**4, thres=None, 
             bounds=None, **kwargs):
     x = normalize(dat['x'])
     y = normalize(dat['y'])
@@ -242,7 +242,7 @@ def fit_fun(func, dat, fname=None, out_d=os.getcwd(),
     if thres != None:
         cdf = thres_output_cdf(x, preds, thres)
         plt_thres_output_cdf(dat['x'], cdf, fname=fname)
-
+        join_proba(cdf, dat)
         
 def thres_output_cdf(x, preds, thres):
     '''
@@ -284,6 +284,18 @@ def normalize_val(x, val):
     normalized_v = normalize(v)
     ret = normalized_v[len(normalized_v) - 1]
     return ret
+
+def join_proba(cdf, dat):
+    vals_nb = 10**4
+    mu = 81.3
+    std = 0.2
+    y = std * np.random.randn(vals_nb) + mu
+    y_shited = y - mu
+    hist(y_shited, stat='probability')
+    shifted_x_cdf = denormalize(np.array(cdf['x']), dat['x'])- mu
+    lplt(shifted_x_cdf, np.array(cdf['y']))
+#    hist(y * dat['y'])
+    shw()
     
 if __name__ == '__main__':
     import sys
