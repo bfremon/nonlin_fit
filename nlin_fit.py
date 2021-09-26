@@ -324,10 +324,6 @@ def normalize_val(x, val):
     
 if __name__ == '__main__':
     import sys
-    
-    def sigmoid_2p(x, c1, c2):
-        ret = 1 / (1 + np.exp(c1 * (x - c2)))
-        return ret
 
     def loglogistic(x, c1, c2, c3, c4):
         ret = c1 + (c2 - c1) / (1 + np.exp(c4 * np.log(x / c3)))
