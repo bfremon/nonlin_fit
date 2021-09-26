@@ -9,6 +9,6 @@ install:
 	$(pip_inst) $(py_pkgs)
 
 clean:
-	$(rm) *.png
+	$(rm) *.png *.svg
 
 .PHONY: clean
