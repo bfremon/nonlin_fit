@@ -181,6 +181,10 @@ def plt_bs_fit(fits, x, y, out=os.getcwd()):
 
     
 def _prep_out_f(out_d, fname=None, suffix=None):
+    '''
+    Return absolute path to write fname.suffix
+    '''
+
     ret = ''
     if fname:
         ret = str(fname)
@@ -193,6 +197,15 @@ def _prep_out_f(out_d, fname=None, suffix=None):
     return ret
 
 def plt_fit_ci(dat, fit_res, ci_l, ci_h, pi_l, pi_h, out_d=os.getcwd(), fname=None):
+    '''
+    Plot raw data and fit:
+    dat: experimental data labeled with x and y
+    fit_res: best fit returned by fit()
+    ci_l, ci_h: lower and upper bound of fit confidence interval
+    pi_l, pi_h: lower and upper bound of fit prediction interval
+    out_d: output dir (default to $CWD)
+    fname: output filename
+    '''
     norm_x = normalize(dat['x'])
     norm_y = normalize(dat['y'])
     scat(dat['x'], dat['y'], color='orange')
@@ -210,6 +223,13 @@ def plt_fit_ci(dat, fit_res, ci_l, ci_h, pi_l, pi_h, out_d=os.getcwd(), fname=No
     
         
 def plt_residuals(dat, fit_res, out_d=os.getcwd(), fname=None):
+    '''
+    Plot residuals from fit:
+    dat: experimental data labeled wuth x and y
+    fit_res: best_fit returned by fit()
+    out_d: output dir (default to $CWD)
+    fname:output filename
+    '''
     residuals = dat['y'] - denormalize(fit_res.best_fit, dat['y'])
     scat(dat['x'], residuals)
     out_f = _prep_out_f(out_d, fname, '-residuals')
@@ -225,6 +245,9 @@ def plt_residuals(dat, fit_res, out_d=os.getcwd(), fname=None):
 def fit_fun(func, dat, fname=None, out_d=os.getcwd(),
             bs_nb=100, mc_draws=10**4, thres=None, 
             bounds=None, **kwargs):
+    '''
+    helper function to be replaced
+    '''
     x = normalize(dat['x'])
     y = normalize(dat['y'])
     print('processing %s' % fname)
@@ -242,11 +265,10 @@ def fit_fun(func, dat, fname=None, out_d=os.getcwd(),
     if thres != None:
         cdf = thres_output_cdf(x, preds, thres)
         plt_thres_output_cdf(dat['x'], cdf, fname=fname)
-        join_proba(cdf, dat)
         
 def thres_output_cdf(x, preds, thres):
     '''
-    For each x prediction in preds (x and preds rows aligned, 
+    For each x prediction in preds (x and preds rows aligned), 
     determine the probability of having a value higher than thres
     x: input
     preds: Monte Carlo predictions (output of mc_fit_pi())
@@ -262,6 +284,14 @@ def thres_output_cdf(x, preds, thres):
     return ret
 
 def plt_thres_output_cdf(x, out_thres_cdf, out_d=os.getcwd(), fname=None):
+    '''
+    Plot the results of thres_output_cdf():
+    x: column vector
+    out_thres_cdf: output of thres_output_cdf() -
+    (probability for a given x to have a y value superior to thres)
+    out_d: output dir (default to $CWD)
+    fname: output file
+    '''
     yval = 1.0 - np.array(out_thres_cdf['y'])
     xval = np.array(denormalize(np.array(out_thres_cdf['x']), x))
     lplt(xval, yval)
@@ -271,6 +301,11 @@ def plt_thres_output_cdf(x, out_thres_cdf, out_d=os.getcwd(), fname=None):
     plt.cla()
 
 def min_idx_val(x, thres):
+    '''
+    Return index of the first value of x strictly superior to thres
+    x: 1D vector
+    thres: scalar
+    '''
     diff = x - float(thres)
     diff[diff < 0.0] = np.Inf
     ret = diff.argmin()
@@ -279,23 +314,13 @@ def min_idx_val(x, thres):
 def normalize_val(x, val):
     '''
     Normalize val from vector x
+    x: 1D vector
+    val: scalar
     '''
     v = np.append(x, val)
     normalized_v = normalize(v)
     ret = normalized_v[len(normalized_v) - 1]
     return ret
-
-def join_proba(cdf, dat):
-    vals_nb = 10**4
-    mu = 81.3
-    std = 0.2
-    y = std * np.random.randn(vals_nb) + mu
-    y_shited = y - mu
-    hist(y_shited, stat='probability')
-    shifted_x_cdf = denormalize(np.array(cdf['x']), dat['x'])- mu
-    lplt(shifted_x_cdf, np.array(cdf['y']))
-#    hist(y * dat['y'])
-    shw()
     
 if __name__ == '__main__':
     import sys
