@@ -326,8 +326,7 @@ if __name__ == '__main__':
     import sys
         
     if len(sys.argv) == 2 and sys.argv[1] == '-t':
-        import pi_ci4nonlinfit
-        pi_ci4nonlinfit.min_setup()
+        import pi_ci4nonlinfit_simple as pi_ci_4
     else:
         import unittest
 
