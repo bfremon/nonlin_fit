@@ -246,7 +246,15 @@ def fit_fun(func, dat, fname=None, out_d=os.getcwd(),
             bs_nb=100, mc_draws=10**4, thres=None, 
             bounds=None, **kwargs):
     '''
-    helper function to be replaced
+    Fit experimental data using func(*params) and return bootscrapped 
+    confidence intervals and Monte Carlo prediction intervals
+    func: function to be fitted
+    dat: experimental data labeled as x and y
+    bs_nb: number of bootstrap samples
+    mc_draws: number of Monte Carlo draws
+    thres: y threshold for probability=p(x) calculation
+    out_d: output_d (default to $CWD)
+    fname: output filename
     '''
     x = normalize(dat['x'])
     y = normalize(dat['y'])
